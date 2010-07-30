@@ -1,0 +1,17 @@
+# ssh-launcher
+
+Easy launching of multiple ssh shells
+
+## Usage
+
+Create a configuration file with each line specificing a remote server login
+in the format of <short-name>,<user@server>,[xterm options]
+
+## Installation
+
+lein deps
+lein uberjar
+
+## License
+
+GPLv2 http://www.gnu.org/licenses/gpl-2.0.html
