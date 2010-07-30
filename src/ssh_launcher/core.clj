@@ -24,6 +24,14 @@
   [name]
   (println "Launching shell -" name))
 
+(defn printhosts
+  "Prints all the hosts that were loaded from config file"
+  []
+  (let [user (.trim (sh "whoami"))
+	host (.trim (sh "hostname"))]
+    (println "You may launch shells for following systems:\n\tlocal:" user
+	     "@" host)))
+
 (defn make-server-map
   "Make the map with all the server name pairs from a sequence of config lines"
   [f-seq]
@@ -40,6 +48,7 @@
   (cond
    (= cmd "help") (help)
    (= cmd "exit") (System/exit 0)
+   (= cmd "hosts") (printhosts)
    (= cmd "clear") (sh "clear")
    (@server-map cmd) (launch-shell cmd)
    :else (println "Could not recognize command:" cmd)))
@@ -49,9 +58,11 @@
 	conf-file (file-str "~/Desktop/SSH-Launcher/launcher-ssh.conf")
 	server-map (make-server-map (read-lines conf-file))
 	stdin (java.util.Scanner. System/in)]
-;    (sh "clear")
+    (sh "clear")
     (print "Starting SSH-Launcher Shell\nssh-launcher:" user "-- ")
+    (.flush *out*)
     (loop [input (.trim (.nextLine stdin))]
       (do-cmd input)
       (print "ssh-launcher:" user "-- ")
+      (.flush *out*)
       (recur (.trim (.nextLine stdin)))));)
