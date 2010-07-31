@@ -5,7 +5,7 @@
 
 (def & comp)
 (def p partial)
-(def server-map (atom {}))
+(def hosts (atom {}))
 
 (defn help
   "Prints the help info"
@@ -29,18 +29,20 @@
   []
   (let [user (.trim (sh "whoami"))
 	host (.trim (sh "hostname"))]
-    (println "You may launch shells for following systems:\n\tlocal:" user
-	     "@" host)))
+    (println
+     (format "You may launch shells for following systems:\n\tlocal: %s@%s"
+	     user host))
+    (comment)))
 
 (defn make-server-map
   "Make the map with all the server name pairs from a sequence of config lines"
   [f-seq]
   (if-let [lines (remove (p re-find #"^#.*") f-seq)]
     (let [parsed (map #(seq (.split % ",")) lines)]
-      (map #(swap! server-map assoc (first %) (next %)) lines))
-      (do
-	(println "Improper conf file")
-	(System/exit -1))))
+      (map #(swap! hosts assoc (first %) (next %)) parsed))
+    (do
+      (println "Improper conf file")
+      (System/exit -1))))
 
 (defn do-cmd
   "Runs command issued from user or prints error if command is unknown"
@@ -50,14 +52,15 @@
    (= cmd "exit") (System/exit 0)
    (= cmd "hosts") (printhosts)
    (= cmd "clear") (sh "clear")
-   (@server-map cmd) (launch-shell cmd)
+   (contains? @hosts cmd) (launch-shell cmd)
    :else (println "Could not recognize command:" cmd)))
 
-;(defn -main [& args]
+(defn -main [& args]
   (let [user (.trim (sh "whoami"))
 	conf-file (file-str "~/Desktop/SSH-Launcher/launcher-ssh.conf")
-	server-map (make-server-map (read-lines conf-file))
 	stdin (java.util.Scanner. System/in)]
+    (make-server-map (read-lines conf-file))
+    (println hosts)
     (sh "clear")
     (print "Starting SSH-Launcher Shell\nssh-launcher:" user "-- ")
     (.flush *out*)
@@ -65,4 +68,6 @@
       (do-cmd input)
       (print "ssh-launcher:" user "-- ")
       (.flush *out*)
-      (recur (.trim (.nextLine stdin)))));)
+      (recur (.trim (.nextLine stdin))))))
+
+(-main)
