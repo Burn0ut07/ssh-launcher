@@ -3,8 +3,6 @@
   (:use (clojure.contrib [shell-out :only (sh)])
 	(clojure.contrib [duck-streams :only (file-str read-lines)])))
 
-(def & comp)
-(def p partial)
 (def hosts (atom {}))
 
 (defn help
@@ -22,27 +20,37 @@
 (defn launch-shell
   "Launches the shell specified by the shortname name"
   [name]
-  (println "Launching shell -" name))
+  (let [host (@hosts name), login (first host)
+	xterm (str "xterm " (fnext host))]
+    (println "Logging into" login "...")
+    (sh (str xterm " -e ssh " login))))
 
 (defn printhosts
   "Prints all the hosts that were loaded from config file"
   []
-  (let [user (.trim (sh "whoami"))
-	host (.trim (sh "hostname"))]
+  (let [user (.trim (sh "whoami")), host (.trim (sh "hostname"))]
     (println
      (format "You may launch shells for following systems:\n\tlocal: %s@%s"
 	     user host))
-    (comment)))
+    (doseq [x (for [ks (keys @hosts)]
+		(format "\t%s@%s" ks (first (@hosts ks))))] (println x))))
 
 (defn make-server-map
   "Make the map with all the server name pairs from a sequence of config lines"
   [f-seq]
-  (if-let [lines (remove (p re-find #"^#.*") f-seq)]
+  (if-let [lines (remove (partial re-find #"^#.*") f-seq)]
     (let [parsed (map #(seq (.split % ",")) lines)]
-      (map #(swap! hosts assoc (first %) (next %)) parsed))
+      (last (map #(swap! hosts assoc (first %) (next %)) parsed)))
     (do
       (println "Improper conf file")
       (System/exit -1))))
+
+(defn bind-smap
+  "Binds server-map to atom"
+  []
+  (let [conf-file (file-str "~/Desktop/SSH-Launcher/launcher-ssh.conf")
+	smap (make-server-map (read-lines conf-file))]
+    (swap! hosts into smap)))
 
 (defn do-cmd
   "Runs command issued from user or prints error if command is unknown"
@@ -52,16 +60,14 @@
    (= cmd "exit") (System/exit 0)
    (= cmd "hosts") (printhosts)
    (= cmd "clear") (sh "clear")
+   (= cmd "restart") (bind-smap)
    (contains? @hosts cmd) (launch-shell cmd)
    :else (println "Could not recognize command:" cmd)))
 
 (defn -main [& args]
-  (let [user (.trim (sh "whoami"))
-	conf-file (file-str "~/Desktop/SSH-Launcher/launcher-ssh.conf")
-	stdin (java.util.Scanner. System/in)]
-    (make-server-map (read-lines conf-file))
-    (println hosts)
+  (let [user (.trim (sh "whoami")), stdin (java.util.Scanner. System/in)]
     (sh "clear")
+    (bind-smap)
     (print "Starting SSH-Launcher Shell\nssh-launcher:" user "-- ")
     (.flush *out*)
     (loop [input (.trim (.nextLine stdin))]
