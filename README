@@ -9,8 +9,10 @@ in the format of <short-name>,<user@server>,[xterm options]
 
 ## Installation
 
-lein deps
-lein uberjar
+cake deps
+cake uberjar
+mv ssh-launcher-1.0.0-SNAPSHOT-standalone.jar ssh-launcher.jar
+Put Xterm on path and go
 
 ## License
 
