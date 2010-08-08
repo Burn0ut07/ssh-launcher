@@ -2,6 +2,6 @@
 
 clear
 
-xterm -geometry 60x30 -e "java -jar ssh-launcher.jar" &
+xterm -geometry 75x30 -e "java -jar ssh-launcher.jar" &
 
 exit
