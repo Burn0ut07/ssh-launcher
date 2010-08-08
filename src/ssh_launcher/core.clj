@@ -1,9 +1,14 @@
 (ns ssh-launcher.core
   (:gen-class)
   (:use (clojure.contrib [shell-out :only (sh)])
-	(clojure.contrib [duck-streams :only (file-str read-lines)])))
+	(clojure.contrib [io :only (file-str read-lines)])))
 
-(def hosts (atom {}))
+(def hosts (atom {})); data structure to hold ssh logins
+
+(defn shlex
+  "Auxilary for sh which takes command string and splits it"
+  [cmd-str]
+  (apply sh (-> cmd-str (.split " ") seq)))
 
 (defn help
   "Prints the help info"
@@ -20,11 +25,14 @@
 (defn launch-shell
   "Launches the shell specified by the shortname name"
   [name]
-  (let [host (@hosts name), login (first host)
-	xterm (str "xterm " (fnext host))]
+  (let [host (@hosts name), login (first host)]
     (println "Logging into" login "...")
-    (sh (str xterm " -e ssh " login))))
-
+    (if-let [opts (fnext host)]
+      (let [xterm (str "xterm " opts)]
+	(shlex (str xterm " -e ssh " login)))
+      (let [cmd (str "xterm -e ssh " login)]
+	(shlex cmd)))))
+	   
 (defn printhosts
   "Prints all the hosts that were loaded from config file"
   []
@@ -33,7 +41,7 @@
      (format "You may launch shells for following systems:\n\tlocal: %s@%s"
 	     user host))
     (doseq [x (for [ks (keys @hosts)]
-		(format "\t%s@%s" ks (first (@hosts ks))))] (println x))))
+		(format "\t%s: %s" ks (first (@hosts ks))))] (println x))))
 
 (defn make-server-map
   "Make the map with all the server name pairs from a sequence of config lines"
@@ -57,22 +65,22 @@
   [cmd]
   (cond
    (= cmd "help") (help)
-   (= cmd "exit") (System/exit 0)
+   (= cmd "exit") (do (println "Exiting SSH-Launcher Shell..") (System/exit 0))
    (= cmd "hosts") (printhosts)
    (= cmd "clear") (sh "clear")
    (= cmd "restart") (bind-smap)
+   (= cmd "local") (shlex "xterm &")
    (contains? @hosts cmd) (launch-shell cmd)
    :else (println "Could not recognize command:" cmd)))
 
 (defn -main [& args]
   (let [user (.trim (sh "whoami")), stdin (java.util.Scanner. System/in)]
-    (sh "clear")
     (bind-smap)
-    (print "Starting SSH-Launcher Shell\nssh-launcher:" user "-- ")
+    (print (str "Starting SSH-Launcher Shell\n[ssh-launcher: " user "]-- "))
     (.flush *out*)
     (loop [input (.trim (.nextLine stdin))]
       (do-cmd input)
-      (print "ssh-launcher:" user "-- ")
+      (print (str "[ssh-launcher: " user "]-- "))
       (.flush *out*)
       (recur (.trim (.nextLine stdin))))))
 

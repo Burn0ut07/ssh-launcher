@@ -1,0 +1,7 @@
+#!/bin/bash                                                                    
+
+clear
+
+xterm -geometry 60x30 -e "java -jar ssh-launcher.jar" &
+
+exit

@@ -3,8 +3,6 @@
   :dependencies [[clojure "1.2.0-master-SNAPSHOT"]
                  [clojure-contrib "1.2.0-SNAPSHOT"]
 		 [clojure-protobuf "0.2.4"]]
-  :dev-dependencies [[swank-clojure "1.2.1"]
-		     [clojure-protobuf "0.2.4"]]
-  :tasks [protobuf.tasks]
+  :dev-dependencies [[swank-clojure "1.2.1"]]
   :aot [ssh-launcher.core]
   :main ssh-launcher.core)
