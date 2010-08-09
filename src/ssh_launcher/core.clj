@@ -4,6 +4,7 @@
 	(clojure.contrib [io :only (file-str read-lines)])))
 
 (def hosts (atom {})); data structure to hold ssh logins
+(def conf-file (file-str "~/Desktop/SSH-Launcher/launcher-ssh.conf"))
 
 (defn shlex
   "Auxilary for sh which takes command string and splits it"
@@ -47,17 +48,10 @@
   [f-seq]
   (if-let [lines (remove (partial re-find #"^#.*") f-seq)]
     (let [parsed (map #(seq (.split % ",")) lines)]
-      (last (map #(swap! hosts assoc (first %) (next %)) parsed)))
+      (doseq [[f & n] parsed] (swap! hosts assoc f n)))
     (do
       (println "Improper conf file")
       (System/exit -1))))
-
-(defn bind-smap
-  "Binds server-map to atom"
-  []
-  (let [conf-file (file-str "~/Desktop/SSH-Launcher/launcher-ssh.conf")
-	smap (make-server-map (read-lines conf-file))]
-    (swap! hosts into smap)))
 
 (defn do-cmd
   "Runs command issued from user or prints error if command is unknown"
@@ -67,20 +61,20 @@
    (= cmd "exit") (do (println "Exiting SSH-Launcher Shell..") (System/exit 0))
    (= cmd "hosts") (printhosts)
    (= cmd "clear") (sh "clear")
-   (= cmd "restart") (bind-smap)
+   (= cmd "restart") (make-server-map (read-lines conf-file))
    (= cmd "local") (shlex "xterm &")
    (contains? @hosts cmd) (launch-shell cmd)
    :else (println "Could not recognize command:" cmd)))
 
 (defn -main [& args]
-  (let [user (.trim (sh "whoami")), stdin (java.util.Scanner. System/in)]
-    (bind-smap)
+  (let [user (.trim (sh "whoami"))]
+    (make-server-map (read-lines conf-file))
     (print (str "Starting SSH-Launcher Shell\n[ssh-launcher: " user "]-- "))
     (.flush *out*)
-    (loop [input (.trim (.nextLine stdin))]
+    (loop [input (.trim (read-line))]
       (do-cmd input)
       (print (str "[ssh-launcher: " user "]-- "))
       (.flush *out*)
-      (recur (.trim (.nextLine stdin))))))
+      (recur (.trim (read-line))))))
 
 (-main)
