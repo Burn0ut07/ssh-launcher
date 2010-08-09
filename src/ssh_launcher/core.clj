@@ -40,8 +40,7 @@
     (println
      (format "You may launch shells for following systems:\n\tlocal: %s@%s"
 	     user host))
-    (doseq [x (for [ks (keys @hosts)]
-		(format "\t%s: %s" ks (first (@hosts ks))))] (println x))))
+    (doseq [[k v] @hosts] (println (format "\t%s: %s" k (first v))))))
 
 (defn make-server-map
   "Make the map with all the server name pairs from a sequence of config lines"
