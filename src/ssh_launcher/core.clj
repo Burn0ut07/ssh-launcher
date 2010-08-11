@@ -22,7 +22,7 @@
   (println "\thosts - prints the list of hosts that can be launched")
   (println "\tlocal - Launches local shell")
   (println "\trestart - reloads the configuration file"))
-
+ 
 (defn launch-shell
   "Launches the shell specified by the shortname name"
   [name]
@@ -30,9 +30,9 @@
     (println "Logging into" login "...")
     (if-let [opts (fnext host)]
       (let [xterm (str "xterm " opts)]
-	(shlex (str xterm " -e ssh " login)))
+	(future (shlex (str xterm " -e ssh " login))))
       (let [cmd (str "xterm -e ssh " login)]
-	(shlex cmd)))))
+	(future (shlex cmd))))))
 	   
 (defn printhosts
   "Prints all the hosts that were loaded from config file"
@@ -56,15 +56,15 @@
 (defn do-cmd
   "Runs command issued from user or prints error if command is unknown"
   [cmd]
-  (cond
-   (= cmd "help") (help)
-   (= cmd "exit") (do (println "Exiting SSH-Launcher Shell..") (System/exit 0))
-   (= cmd "hosts") (printhosts)
-   (= cmd "clear") (sh "clear")
-   (= cmd "restart") (make-server-map (read-lines conf-file))
-   (= cmd "local") (shlex "xterm &")
-   (contains? @hosts cmd) (launch-shell cmd)
-   :else (println "Could not recognize command:" cmd)))
+  (condp = cmd
+      "help" (help)
+      "exit" (do (println "Exiting SSH-Launcher Shell...") (System/exit 0))
+      "hosts" (printhosts)
+      "clear" (sh "clear")
+      "restart" (make-server-map (read-lines conf-file))
+      "local" (shlex "xterm &")
+      (some #{cmd} (keys @hosts)) (launch-shell cmd)
+      (println "Could not recognize command:" cmd)))
 
 (defn -main [& args]
   (let [user (.trim (sh "whoami"))]
@@ -76,5 +76,3 @@
       (print (str "[ssh-launcher: " user "]-- "))
       (.flush *out*)
       (recur (.trim (read-line))))))
-
-(-main)
