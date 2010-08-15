@@ -3,7 +3,6 @@
   (:use (clojure.contrib [shell-out :only (sh)])
 	(clojure.contrib [io :only (file-str read-lines)])))
 
-(def hosts (atom {})); data structure to hold ssh logins
 (def conf-file (file-str "~/Desktop/SSH-Launcher/launcher-ssh.conf"))
 
 (defn shlex
@@ -25,8 +24,8 @@
  
 (defn launch-shell
   "Launches the shell specified by the shortname name"
-  [name]
-  (let [host (@hosts name), login (first host)]
+  [name hosts]
+  (let [host (hosts name), login (first host)]
     (println "Logging into" login "...")
     (if-let [opts (fnext host)]
       (let [xterm (str "xterm " opts)]
@@ -36,43 +35,43 @@
 	   
 (defn printhosts
   "Prints all the hosts that were loaded from config file"
-  []
+  [hosts]
   (let [user (.trim (sh "whoami")), host (.trim (sh "hostname"))]
     (println
      (format "You may launch shells for following systems:\n\tlocal: %s@%s"
 	     user host))
-    (doseq [[k v] @hosts] (println (format "\t%s: %s" k (first v))))))
+    (doseq [[k v] hosts] (println (format "\t%s: %s" k (first v))))))
 
 (defn make-server-map
   "Make the map with all the server name pairs from a sequence of config lines"
   [f-seq]
   (if-let [lines (remove (partial re-find #"^#.*") f-seq)]
     (let [parsed (map #(seq (.split % ",")) lines)]
-      (doseq [[f & n] parsed] (swap! hosts assoc f n)))
+      (reduce (fn [m [f & n]] (assoc m f n)) {} parsed))
     (do
       (println "Improper conf file")
       (System/exit -1))))
 
 (defn do-cmd
   "Runs command issued from user or prints error if command is unknown"
-  [cmd]
+  [cmd hosts]
   (condp = cmd
       "help" (help)
       "exit" (do (println "Exiting SSH-Launcher Shell...") (System/exit 0))
-      "hosts" (printhosts)
+      "hosts" (printhosts hosts)
       "clear" (sh "clear")
       "restart" (make-server-map (read-lines conf-file))
       "local" (shlex "xterm &")
-      (some #{cmd} (keys @hosts)) (launch-shell cmd)
+      (some #{cmd} (keys hosts)) (launch-shell cmd hosts)
       (println "Could not recognize command:" cmd)))
 
 (defn -main [& args]
-  (let [user (.trim (sh "whoami"))]
-    (make-server-map (read-lines conf-file))
+  (let [user (.trim (sh "whoami"))
+	hosts (make-server-map (read-lines conf-file))]
     (print (str "Starting SSH-Launcher Shell\n[ssh-launcher: " user "]-- "))
     (.flush *out*)
     (loop [input (.trim (read-line))]
-      (do-cmd input)
+      (do-cmd input hosts)
       (print (str "[ssh-launcher: " user "]-- "))
       (.flush *out*)
       (recur (.trim (read-line))))))
