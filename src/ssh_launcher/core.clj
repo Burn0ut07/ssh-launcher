@@ -24,7 +24,7 @@
  
 (defn launch-shell
   "Launches the shell specified by the shortname name"
-  [name hosts]
+  [hosts name]
   (let [host (hosts name), login (first host)]
     (println "Logging into" login "...")
     (if-let [opts (fnext host)]
@@ -62,10 +62,10 @@
       "clear" (sh "clear")
       "restart" (make-server-map (read-lines conf-file))
       "local" (shlex "xterm &")
-      (some #{cmd} (keys hosts)) (launch-shell cmd hosts)
+      ((-> hosts keys set) cmd) (launch-shell hosts cmd)
       (println "Could not recognize command:" cmd)))
 
-(defn -main [& args]
+(defn -main [file & args]
   (let [user (.trim (sh "whoami"))
 	hosts (make-server-map (read-lines conf-file))]
     (print (str "Starting SSH-Launcher Shell\n[ssh-launcher: " user "]-- "))
